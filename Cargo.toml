@@ -79,6 +79,14 @@ cfg_aliases = "0.2.1"
 bitflags = "2"
 cursor-icon = "1.1.0"
 dpi = { version = "0.1.1", path = "dpi" }
+gdk = "0.18.2"
+gdk-pixbuf = "0.20.4"
+gdk-sys = "0.18.2"
+gdkwayland-sys = "0.18.2"
+gdkx11-sys = "0.18.2"
+gio = "0.20.6"
+glib = "0.18.1"
+gtk = "0.18.2"
 rwh_06 = { package = "raw-window-handle", version = "0.6", features = ["std"] }
 serde = { workspace = true, optional = true }
 smol_str = "0.3"

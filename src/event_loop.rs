@@ -230,6 +230,12 @@ impl EventLoop {
         self.event_loop.run_app(app)
     }
 
+    #[inline]
+    #[cfg(any(wayland_platform, x11_platform))]
+    pub fn run_with_gtk<A: ApplicationHandler>(self, app: A) -> Result<(), EventLoopError> {
+        self.event_loop.run_with_gtk(app)
+    }
+
     /// Creates an [`EventLoopProxy`] that can be used to dispatch user events
     /// to the main event loop, possibly from another thread.
     pub fn create_proxy(&self) -> EventLoopProxy {

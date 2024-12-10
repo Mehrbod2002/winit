@@ -8,6 +8,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use gdk::glib::MainContext;
 use sctk::reexports::calloop_wayland_source::WaylandSource;
 use sctk::reexports::client::{globals, Connection, QueueHandle};
 
@@ -59,10 +60,28 @@ pub struct EventLoop {
 
     // XXX drop after everything else, just to be safe.
     /// Calloop's event loop.
-    event_loop: calloop::EventLoop<'static, WinitState>,
+    event_loop: RefCell<calloop::EventLoop<'static, WinitState>>,
 }
 
 impl EventLoop {
+    pub fn run_with_gtk<A: ApplicationHandler>(self, _app: A) -> Result<(), EventLoopError> {
+        let main_context = MainContext::default();
+        let main_loop = glib::MainLoop::new(Some(&main_context), false);
+
+        glib::source::idle_add_local({
+            move || {
+                let mut state_borrow = self.active_event_loop.state.borrow_mut();
+                self.event_loop.borrow_mut().dispatch(None, &mut *&mut state_borrow).unwrap();
+
+                glib::ControlFlow::Continue
+            }
+        });
+
+        main_loop.run();
+
+        Ok(())
+    }
+
     pub fn new() -> Result<EventLoop, EventLoopError> {
         let connection = Connection::connect_to_env().map_err(|err| os_error!(err))?;
 
@@ -139,7 +158,7 @@ impl EventLoop {
             window_ids: Vec::new(),
             handle,
             wayland_dispatcher,
-            event_loop,
+            event_loop: event_loop.into(),
             active_event_loop,
         };
 
@@ -499,7 +518,7 @@ impl EventLoop {
     fn loop_dispatch<D: Into<Option<std::time::Duration>>>(&mut self, timeout: D) -> IOResult<()> {
         let state = &mut self.active_event_loop.state.get_mut();
 
-        self.event_loop.dispatch(timeout, state).map_err(|error| {
+        self.event_loop.borrow_mut().dispatch(timeout, state).map_err(|error| {
             tracing::error!("Error dispatching event loop: {}", error);
             error.into()
         })
@@ -532,13 +551,17 @@ impl EventLoop {
 
 impl AsFd for EventLoop {
     fn as_fd(&self) -> BorrowedFd<'_> {
-        self.event_loop.as_fd()
+        unsafe {
+            let borrowed = self.event_loop.borrow();
+            let raw_fd = borrowed.as_fd().as_raw_fd();
+            BorrowedFd::borrow_raw(raw_fd)
+        }
     }
 }
 
 impl AsRawFd for EventLoop {
     fn as_raw_fd(&self) -> RawFd {
-        self.event_loop.as_raw_fd()
+        self.event_loop.borrow_mut().as_raw_fd()
     }
 }
 

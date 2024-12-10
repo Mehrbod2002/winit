@@ -5,6 +5,7 @@ use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::os::raw::*;
 use std::os::unix::io::{AsFd, AsRawFd, BorrowedFd, RawFd};
+use std::rc::Rc;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
@@ -13,6 +14,7 @@ use std::{fmt, mem, ptr, slice, str};
 use calloop::generic::Generic;
 use calloop::ping::Ping;
 use calloop::{EventLoop as Loop, Readiness};
+use glib::{MainContext, MainLoop};
 use libc::{setlocale, LC_CTYPE};
 use tracing::warn;
 use x11rb::connection::RequestConnection;
@@ -166,6 +168,35 @@ struct EventLoopState {
 }
 
 impl EventLoop {
+
+    pub fn run_with_gtk<A: ApplicationHandler>(self, _app: A) -> Result<(), EventLoopError> {
+        let main_context = MainContext::default();
+        let main_loop = MainLoop::new(Some(&main_context), false);
+
+        let event_loop = Rc::new(RefCell::new(self.event_loop));
+        let state = Rc::new(RefCell::new(self.state));
+
+        glib::source::idle_add_local({
+            let event_loop = event_loop.clone();
+            let state = state.clone();
+
+            move || {
+                let mut event_loop_borrowed = event_loop.borrow_mut();
+                let mut state_borrowed = state.borrow_mut();
+
+                event_loop_borrowed
+                    .dispatch(None, &mut *state_borrowed)
+                    .unwrap();
+
+                glib::ControlFlow::Continue
+            }
+        });
+
+        main_loop.run();
+
+        Ok(())
+    }
+
     pub(crate) fn new(xconn: Arc<XConnection>) -> EventLoop {
         let root = xconn.default_root().root;
         let atoms = xconn.atoms();
