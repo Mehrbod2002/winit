@@ -25,6 +25,7 @@ pub struct Window {
     redraws: Arc<Mutex<VecDeque<WindowId>>>,
     destroys: Arc<Mutex<VecDeque<WindowId>>>,
     event_loop_proxy: Arc<EventLoopProxy>,
+    window_attributes: WindowAttributes,
 }
 
 impl Window {
@@ -32,6 +33,7 @@ impl Window {
         el: &ActiveEventLoop,
         attrs: window::WindowAttributes,
     ) -> Result<Self, RequestError> {
+        let cloned_attrs = attrs.clone();
         let scale = MonitorHandle.scale_factor();
 
         let (x, y) = if let Some(pos) = attrs.position {
@@ -121,6 +123,7 @@ impl Window {
             redraws: el.redraws.clone(),
             destroys: el.destroys.clone(),
             event_loop_proxy: el.event_loop_proxy.clone(),
+            window_attributes: cloned_attrs,
         })
     }
 
@@ -154,6 +157,10 @@ impl Window {
 }
 
 impl CoreWindow for Window {
+    fn window_attributes(&self) -> WindowAttributes {
+        self.window_attributes.clone()
+    }
+
     fn id(&self) -> WindowId {
         WindowId::from_raw(self.window_socket.fd)
     }

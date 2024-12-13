@@ -62,6 +62,10 @@ impl Window {
 }
 
 impl CoreWindow for Window {
+    fn window_attributes(&self) -> WindowAttributes {
+        self.window_attributes.clone()
+    }
+
     fn id(&self) -> WindowId {
         self.0.id()
     }
@@ -428,6 +432,7 @@ pub struct UnownedWindow {
     pub shared_state: Mutex<SharedState>,
     redraw_sender: WakeSender<WindowId>,
     activation_sender: WakeSender<super::ActivationToken>,
+    window_attributes: WindowAttributes,
 }
 macro_rules! leap {
     ($e:expr) => {
@@ -441,6 +446,7 @@ impl UnownedWindow {
         event_loop: &ActiveEventLoop,
         window_attrs: WindowAttributes,
     ) -> Result<UnownedWindow, RequestError> {
+        let cloned_window_attrs = window_attrs.clone();
         let xconn = &event_loop.xconn;
         let atoms = xconn.atoms();
 
@@ -648,6 +654,7 @@ impl UnownedWindow {
             shared_state: SharedState::new(guessed_monitor, &window_attrs),
             redraw_sender: event_loop.redraw_sender.clone(),
             activation_sender: event_loop.activation_sender.clone(),
+            window_attributes: cloned_window_attrs,
         };
 
         // Title must be set before mapping. Some tiling window managers (i.e. i3) use the window

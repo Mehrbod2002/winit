@@ -71,6 +71,9 @@ pub struct Window {
 
     /// The event sink to deliver synthetic events.
     window_events_sink: Arc<Mutex<EventSink>>,
+
+    /// The event sink to deliver synthetic events.
+    window_attributes: WindowAttributes,
 }
 
 impl Window {
@@ -78,6 +81,7 @@ impl Window {
         event_loop_window_target: &ActiveEventLoop,
         attributes: WindowAttributes,
     ) -> Result<Self, RequestError> {
+        let clone_attributes = attributes.clone();
         let queue_handle = event_loop_window_target.queue_handle.clone();
         let mut state = event_loop_window_target.state.borrow_mut();
 
@@ -214,6 +218,7 @@ impl Window {
             event_loop_awakener,
             window_requests,
             window_events_sink,
+            window_attributes: clone_attributes,
         })
     }
 }
@@ -381,6 +386,10 @@ impl CoreWindow for Window {
 
     fn is_visible(&self) -> Option<bool> {
         None
+    }
+
+    fn window_attributes(&self) -> WindowAttributes {
+        self.window_attributes.clone()
     }
 
     fn set_resizable(&self, resizable: bool) {

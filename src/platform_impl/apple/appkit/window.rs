@@ -19,6 +19,7 @@ pub(crate) struct Window {
     window: MainThreadBound<Retained<WinitWindow>>,
     /// The window only keeps a weak reference to this, so we must keep it around here.
     delegate: MainThreadBound<Retained<WindowDelegate>>,
+    window_attributes: WindowAttributes,
 }
 
 impl Window {
@@ -26,10 +27,12 @@ impl Window {
         window_target: &ActiveEventLoop,
         attributes: WindowAttributes,
     ) -> Result<Self, RequestError> {
+        let cloned_attrs = attributes.clone();
         let mtm = window_target.mtm;
         let delegate =
             autoreleasepool(|_| WindowDelegate::new(&window_target.app_state, attributes, mtm))?;
         Ok(Window {
+            window_attributes: cloned_attrs,
             window: MainThreadBound::new(delegate.window().retain(), mtm),
             delegate: MainThreadBound::new(delegate, mtm),
         })
@@ -165,6 +168,10 @@ impl CoreWindow for Window {
 
     fn set_visible(&self, visible: bool) {
         self.maybe_wait_on_main(|delegate| delegate.set_visible(visible));
+    }
+    
+    fn window_attributes(&self) ->  WindowAttributes {
+        self.window_attributes.clone()
     }
 
     fn is_visible(&self) -> Option<bool> {

@@ -1331,6 +1331,9 @@ pub trait Window: AsAny + Send + Sync {
 
     /// Get the raw-window-handle v0.6 window handle.
     fn rwh_06_window_handle(&self) -> &dyn rwh_06::HasWindowHandle;
+
+    /// Get window attributes
+    fn window_attributes(&self) -> WindowAttributes;
 }
 
 impl dyn Window {

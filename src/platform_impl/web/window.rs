@@ -21,6 +21,7 @@ use crate::window::{
 
 pub struct Window {
     inner: Dispatcher<Inner>,
+    window_attributes: WindowAttributes,
 }
 
 pub struct Inner {
@@ -37,6 +38,7 @@ impl Window {
         target: &ActiveEventLoop,
         attr: WindowAttributes,
     ) -> Result<Self, RequestError> {
+        let cloned_attrs = attrs.clone();
         let id = target.generate_id();
 
         let window = target.runner.window();
@@ -70,7 +72,7 @@ impl Window {
         let (dispatcher, runner) = Dispatcher::new(target.runner.main_thread(), inner);
         target.runner.add_canvas(id, canvas, runner);
 
-        Ok(Window { inner: dispatcher })
+        Ok(Window { inner: dispatcher, window_attributes: cloned_attrs })
     }
 
     pub fn canvas(&self) -> Option<Ref<'_, HtmlCanvasElement>> {
@@ -96,6 +98,10 @@ impl Window {
 impl RootWindow for Window {
     fn id(&self) -> WindowId {
         self.inner.queue(|inner| inner.id)
+    }
+
+    fn window_attributes(&self) -> WindowAttributes {
+        self.window_attributes.clone();
     }
 
     fn scale_factor(&self) -> f64 {
